@@ -1,0 +1,67 @@
+import pandas as pd
+import xgboost as xgb
+import numpy as np
+data = pd.read_csv('/content/drive/MyDrive/Classroom/train.csv')
+data['temp'] = data['urlid']
+data['urlid'] = data['alchemy_category']
+data['alchemy_category'] = data['temp']
+del data['temp']
+
+data= data.drop('boilerplate', axis=1)
+data.head()
+
+dataset = data.replace(to_replace ="?", value =np.nan)
+
+X = dataset.iloc[:, 1:-1].values
+y = dataset.iloc[:, -1].values
+#X = X.drop('boilerplate', axis=1)
+print(X)
+import pandas as pd
+import numpy as np
+
+from sklearn.base import TransformerMixin
+
+class DataFrameImputer(TransformerMixin):
+
+    def __init__(self):
+        """Impute missing values.
+
+        Columns of dtype object are imputed with the most frequent value 
+        in column.
+
+        Columns of other types are imputed with mean of column.
+
+        """
+    def fit(self, X, y=None):
+
+        self.fill = pd.Series([X[c].value_counts().index[0]
+            if X[c].dtype == np.dtype('O') else X[c].mean() for c in X],
+            index=X.columns)
+
+        return self
+
+    def transform(self, X, y=None):
+        return X.fillna(self.fill)
+
+X = pd.DataFrame(X[:,:])
+X = DataFrameImputer().fit_transform(X)from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [0])], remainder='passthrough')
+X = np.array(ct.fit_transform(X))
+print(X.shape)
+     
+from sklearn.model_selection import train_test_split
+print(X.shape)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.1, random_state = 1)
+print(X_train.shape)
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+X_train[: ,14:] = sc.fit_transform(X_train[: ,14:])
+X_test[: ,14:] = sc.transform(X_test[: ,14:])
+gbm = xgb.XGBClassifier(max_depth=6, n_estimators=3000, learning_rate=0.01,reg_lambda=2,gamma=0.4,subsample=0.9,cosample_bytree=.8).fit(X_train[: ,1:], y_train)
+y_pred = gbm.predict(X_test[: ,1:])
+print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm = confusion_matrix(y_test, y_pred)
+print(cm)
+accuracy_score(y_test, y_pred)
